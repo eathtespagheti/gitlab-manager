@@ -28,7 +28,8 @@ ARG=""
 printHelp() {
     printf "Actions:\n\n"
     printf "%s:\n\t%s\n" "clone, -c <repo-path>" "Clone repo"
-    printf "%s:\n\t%s\n" "list, -l [name, description, path, url]" "List all repos, optionally you can specify to list only a specific field for every project"
+    printf "%s:\n\t%s\n" "delete, -d <repo-path>" "Delete a repo"
+    printf "%s:\n\t%s\n" "list, -l [name, description, path, url, id]" "List all repos, optionally you can specify to list only a specific field for every project"
     printf "%s:\n\t%s\n" "new, -n --name \"A quoted name\" --description \"A quoted description\" --path <path> --from local/repo/path --visibility [private, internal, public]" "Create a new repository on gitlab in the specified workspace/name, you can create it from a local repository with the --from parameter"
     printf "%s:\n\t%s\n" "search, -s <word>" "Search between projects, to search a phrase double quote it"
     printf "%s:\n\t%s\n" "update, -u" "Update projects list"
@@ -136,6 +137,12 @@ parseArgs() {
             ;;
         -c | clone)
             ACTION="clone"
+            shift
+            ARG="$1"
+            toShift="1"
+            ;;
+        -d | delete)
+            ACTION="delete"
             shift
             ARG="$1"
             toShift="1"
@@ -271,6 +278,9 @@ printProject() {
         url)
             field=4
             ;;
+        id)
+            field=5
+            ;;
         esac
     }
     if [ -z "$field" ]; then
@@ -285,7 +295,7 @@ printProject() {
 }
 
 fromJsonToList() {
-    jq -r "[.name, .description, .path_with_namespace, .ssh_url_to_repo] | @tsv" "$PROJECTS_FILE"
+    jq -r "[.name, .description, .path_with_namespace, .ssh_url_to_repo, .id] | @tsv" "$PROJECTS_FILE"
 }
 
 listProjects() {
@@ -310,7 +320,7 @@ searchProject() {
 }
 
 cloneProject() {
-    URL=$(fromJsonToList | grep "$1" | cut -f 4)
+    URL=$(fromJsonToList | grep -w "$1" | cut -f 4)
     git -C "$PROJECTS_FOLDER" clone --recurse-submodules "$URL"
 }
 
@@ -341,15 +351,28 @@ newProject() {
 
     [ -n "$newFrom" ] && [ -d "$newFrom" ] && {
         [ -n "$VERBOSE" ] && echo "Searching new project url with $forLater"
-        URL=$(fromJsonToList | grep "$forLater" | cut -f 4)
+        URL=$(fromJsonToList | grep -w "$forLater" | cut -f 4)
         [ -n "$VERBOSE" ] && echo "Found url $URL"
-        git -C "$newFrom" remote rename origin old-origin
+        git -C "$newFrom" remote show | grep -w ^origin >/dev/null 2>&1 && {
+            git -C "$newFrom" remote remove origin
+        }
         git -C "$newFrom" remote add origin "$URL"
         git -C "$newFrom" push -u origin --all
         git -C "$newFrom" push -u origin --tags
     }
 
     return 0
+}
+
+deleteProject() {
+    ID=$(fromJsonToList | grep -w "$1" | cut -f 5)
+    echo "Deleting $1 with id $ID"
+    request="$API_ROOT/projects/$ID"
+    curl --header "Authorization: Bearer $PRIVATE_TOKEN" --request DELETE "$request" >/dev/null 2>&1 || {
+        echo "Error deleting project"
+        exit 7
+    }
+    updateProjectsList
 }
 
 execAction() {
@@ -371,6 +394,9 @@ execAction() {
         ;;
     new)
         newProject
+        ;;
+    delete)
+        deleteProject "$ARG"
         ;;
     *)
         listProjects

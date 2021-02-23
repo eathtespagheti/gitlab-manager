@@ -56,7 +56,7 @@ function listCompletion() {
     genericCompletion "$(gitlab-manager | grep ^list | cut -d '[' -f 2 | tr ']' ' ' | tr ':' ' ' | tr ',' ' ')"
 }
 
-function cloneCompletion() {
+function projectsPathsCompletion() {
     genericCompletion "$(gitlab-manager -l path | sort | tr '\n' ' ')"
 }
 
@@ -90,8 +90,8 @@ _gitlab-manager_completions() {
         ;;
     *)
         case "${COMP_WORDS[prevParameterIndex]}" in
-        clone | -c)
-            cloneCompletion
+        clone | -c | -d | delete)
+            projectsPathsCompletion
             return
             ;;
         list | -l)

@@ -47,6 +47,7 @@ parseNewArgs() {
     [ -n "$VERBOSE" ] && echo "Parsing the following args: $*"
     toShift=""
     : $((toShiftBack = 0))
+    : $((toShift = 0))
     for arg in "$@"; do
         [ -n "$VERBOSE" ] && echo "Parsing $arg"
         case "$arg" in
@@ -76,15 +77,12 @@ parseNewArgs() {
             toShift=1
             ;;
         *)
-            [ -z "$toShift" ] && toShift="$toShiftBack" && return
-            : $((toShiftBack = toShiftBack + 1))
-            : $((toShift))
-            while [ $((toShift)) -gt 0 ]; do
+            [ "$toShift" = "0" ] && toShift="$toShiftBack" && return
+            [ $((toShift)) -gt 0 ] && {
                 shift
                 : $((toShift = toShift - 1))
                 : $((toShiftBack = toShiftBack + 1))
-            done
-            toShift=""
+            }
             ;;
         esac
     done
@@ -95,137 +93,70 @@ parseArgs() {
     : $((toShift = 0))
     for arg in "$@"; do
         case "$arg" in
-        -v)
+        -v | --verbose)
             VERBOSE="true"
             [ -n "$VERBOSE" ] && echo "Enable Verbose"
             shift
             ;;
-        --verbose)
-            VERBOSE="true"
-            [ -n "$VERBOSE" ] && echo "Enable Verbose"
-            shift
-            ;;
-        -ui)
+        -ui | --user-id)
             shift
             USER_ID="$1"
             toShift="1"
             [ -n "$VERBOSE" ] && echo "Set user id to $USER_ID"
             ;;
-        --user-id)
-            shift
-            USER_ID="$1"
-            toShift="1"
-            [ -n "$VERBOSE" ] && echo "Set user id to $USER_ID"
-            ;;
-        -pt)
+        -pt | --private-token)
             shift
             PRIVATE_TOKEN="$1"
             toShift="1"
             [ -n "$VERBOSE" ] && echo "Set private token to $PRIVATE_TOKEN"
             ;;
-        --private-token)
-            shift
-            PRIVATE_TOKEN="$1"
-            toShift="1"
-            [ -n "$VERBOSE" ] && echo "Set private token to $PRIVATE_TOKEN"
-            ;;
-        -cf)
+        -cf | --config-file)
             shift
             CONFIG_FILE="$1"
             toShift="1"
             [ -n "$VERBOSE" ] && echo "Use $CONFIG_FILE as config file"
             ;;
-        --config-file)
-            shift
-            CONFIG_FILE="$1"
-            toShift="1"
-            [ -n "$VERBOSE" ] && echo "Use $CONFIG_FILE as config file"
-            ;;
-        -pf)
+        -pf | --projects-file)
             shift
             PROJECTS_FILE="$1"
             toShift="1"
             [ -n "$VERBOSE" ] && echo "Use $PROJECTS_FILE as projects file"
             ;;
-        --projects-file)
-            shift
-            PROJECTS_FILE="$1"
-            toShift="1"
-            [ -n "$VERBOSE" ] && echo "Use $PROJECTS_FILE as projects file"
-            ;;
-        -gcf)
+        -gcf | --clone-folder)
             shift
             PROJECTS_FOLDER="$1"
             toShift="1"
             [ -n "$VERBOSE" ] && echo "Use $PROJECTS_FOLDER as destination for cloned projects"
             ;;
-        --clone-folder)
-            shift
-            PROJECTS_FOLDER="$1"
-            toShift="1"
-            [ -n "$VERBOSE" ] && echo "Use $PROJECTS_FOLDER as destination for cloned projects"
-            ;;
-        -h)
+        -h | --help)
             printHelp
             shift
             ;;
-        --help)
-            printHelp
-            shift
-            ;;
-        -c)
+        -c | clone)
             ACTION="clone"
             shift
             ARG="$1"
             toShift="1"
             ;;
-        clone)
-            ACTION="clone"
-            shift
-            ARG="$1"
-            toShift="1"
-            ;;
-        -l)
+        -l | list)
             ACTION="list"
             shift
             ARG="$1"
             toShift="1"
             ;;
-        list)
-            ACTION="list"
-            shift
-            ARG="$1"
-            toShift="1"
-            ;;
-        -n)
+        -n | new)
             ACTION="new"
             shift
             parseNewArgs "$@"
             [ -n "$VERBOSE" ] && echo "$toShift arguments have been parsed for new project"
             ;;
-        new)
-            ACTION="new"
-            shift
-            parseNewArgs "$@"
-            [ -n "$VERBOSE" ] && echo "$toShift arguments have been parsed for new project"
-            ;;
-        -s)
+        -s | search)
             ACTION="search"
             shift
             ARG="$1"
             toShift="1"
             ;;
-        search)
-            ACTION="search"
-            shift
-            ARG="$1"
-            toShift="1"
-            ;;
-        -u)
-            ACTION="update"
-            shift
-            ;;
-        update)
+        -u | update)
             ACTION="update"
             shift
             ;;

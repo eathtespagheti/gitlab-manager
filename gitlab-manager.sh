@@ -49,42 +49,44 @@ parseNewArgs() {
     : $((toShiftBack = 0))
     : $((toShift = 0))
     for arg in "$@"; do
-        [ -n "$VERBOSE" ] && echo "Parsing $arg"
         case "$arg" in
         --name)
             shift
             newName="$1"
-            toShift=1
+            toShift="1"
             ;;
         --description)
             shift
             newDescription="$1"
-            toShift=1
+            toShift="1"
             ;;
         --path)
             shift
             newPath="$1"
-            toShift=1
+            toShift="1"
             ;;
         --from)
             shift
             newFrom="$1"
-            toShift=1
+            toShift="1"
             ;;
         --visibility)
             shift
             newVisibility="$1"
-            toShift=1
+            toShift="1"
             ;;
         *)
             [ "$toShift" = "0" ] && toShift="$toShiftBack" && return
             [ $((toShift)) -gt 0 ] && {
+                [ -n "$VERBOSE" ] && echo "Shifting $arg"
                 shift
                 : $((toShift = toShift - 1))
                 : $((toShiftBack = toShiftBack + 1))
+                [ -n "$VERBOSE" ] && echo "Shifted one time, $toShift remaining..."
             }
             ;;
         esac
+        : $((toShiftBack = toShiftBack + 1))
     done
     toShift="$toShiftBack"
 }
@@ -338,7 +340,9 @@ newProject() {
     updateProjectsList
 
     [ -n "$newFrom" ] && [ -d "$newFrom" ] && {
-        URL=$(fromJsonToList | grep "$forLater" | cut -f 4)
+        [ -n "$VERBOSE" ] && echo "Searching new project url with $forLater"
+        URL=$(fromJsonToList | grep "$forLater" | uniq | cut -f 4)
+        [ -n "$VERBOSE" ] && echo "Found url $URL"
         git -C "$newFrom" remote rename origin old-origin
         git -C "$newFrom" remote add origin "$URL"
         git -C "$newFrom" push -u origin --all

@@ -17,7 +17,7 @@
 # along with gitlab-manager.  If not, see <http://www.gnu.org/licenses/>.
 
 function genericCompletion() {
-    mapfile -t COMPREPLY < <(compgen -W "$1" -- "${COMP_WORDS[lastWordIndex]}")
+    mapfile -t COMPREPLY < <(compgen -W "$1" -- "${COMP_WORDS[COMP_CWORD]}")
 }
 
 function listCompletion() {
@@ -42,12 +42,10 @@ function longParametersCompletion() {
 
 _gitlab-manager_completions() {
     numberOfWords="${#COMP_WORDS[@]}"
-
-    lastWordIndex="$((numberOfWords - 1))"
     prevParameterIndex="$((numberOfWords - 2))"
 
     # Switch based on what's user writing
-    case "${COMP_WORDS[lastWordIndex]}" in
+    case "${COMP_WORDS[COMP_CWORD]}" in
     --*)
         # Long parameters completion
         longParametersCompletion
@@ -60,52 +58,20 @@ _gitlab-manager_completions() {
         ;;
     *)
         case "${COMP_WORDS[prevParameterIndex]}" in
-        clone)
+        clone | -c)
             cloneCompletion
             return
             ;;
-        -c)
-            cloneCompletion
-            return
-            ;;
-        list)
+        list | -l)
             listCompletion
             return
             ;;
-        -l)
-            listCompletion
-            return
-            ;;
-        -cf)
-            _filedir
-            return
-            ;;
-        --config-file)
-            _filedir
-            return
-            ;;
-        -pf)
-            _filedir
-            return
-            ;;
-        --projects-file)
-            _filedir
-            return
-            ;;
-        -gcf)
-            _filedir
-            return
-            ;;
-        --clone-folder)
-            _filedir
+        -@(cf|-config-file|pf|-projects-file|gcf|-clone-folder|-from))
+            _cd
             return
             ;;
         --visibility)
             genericCompletion "$(gitlab-manager | grep "\--visibility" | sed "s/--/\n/g;s/[[,:]//g" | tr ']' ' ' | grep visibility | cut -d ' ' -f 2-4)"
-            return
-            ;;
-        --from)
-            _filedir
             return
             ;;
         *)

@@ -252,7 +252,7 @@ updateProjectsList() {
     fi
 
     [ -n "$VERBOSE" ] && echo "Merging public and private projects"
-    jq ".[]" "$DATA_FOLDER/public.json" "$DATA_FOLDER/private.json" >"$PROJECTS_FILE"
+    jq -scf "$DATA_FOLDER/public.json" "$DATA_FOLDER/private.json" | jq ".[]" >"$PROJECTS_FILE"
     rm "$DATA_FOLDER/public.json" "$DATA_FOLDER/private.json"
 }
 
@@ -341,7 +341,7 @@ newProject() {
 
     [ -n "$newFrom" ] && [ -d "$newFrom" ] && {
         [ -n "$VERBOSE" ] && echo "Searching new project url with $forLater"
-        URL=$(fromJsonToList | grep "$forLater" | uniq | cut -f 4)
+        URL=$(fromJsonToList | grep "$forLater" | cut -f 4)
         [ -n "$VERBOSE" ] && echo "Found url $URL"
         git -C "$newFrom" remote rename origin old-origin
         git -C "$newFrom" remote add origin "$URL"

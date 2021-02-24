@@ -44,8 +44,11 @@ printHelp() {
     exit 0
 }
 
+info() {
+    [ -n "$VERBOSE" ] && echo "$@"
+}
+
 parseNewArgs() {
-    [ -n "$VERBOSE" ] && echo "Parsing the following args: $*"
     toShift=""
     : $((toShiftBack = 0))
     : $((toShift = 0))
@@ -79,11 +82,9 @@ parseNewArgs() {
         *)
             [ "$toShift" = "0" ] && toShift="$toShiftBack" && return
             [ $((toShift)) -gt 0 ] && {
-                [ -n "$VERBOSE" ] && echo "Shifting $arg"
                 shift
                 : $((toShift = toShift - 1))
                 : $((toShiftBack = toShiftBack + 1))
-                [ -n "$VERBOSE" ] && echo "Shifted one time, $toShift remaining..."
             }
             ;;
         esac
@@ -98,38 +99,38 @@ parseArgs() {
         case "$arg" in
         -v | --verbose)
             VERBOSE="true"
-            [ -n "$VERBOSE" ] && echo "Enable Verbose"
+            info "Enable Verbose"
             shift
             ;;
         -ui | --user-id)
             shift
             USER_ID="$1"
             toShift="1"
-            [ -n "$VERBOSE" ] && echo "Set user id to $USER_ID"
+            info "Set user id to $USER_ID"
             ;;
         -pt | --private-token)
             shift
             PRIVATE_TOKEN="$1"
             toShift="1"
-            [ -n "$VERBOSE" ] && echo "Set private token to $PRIVATE_TOKEN"
+            info "Set private token to $PRIVATE_TOKEN"
             ;;
         -cf | --config-file)
             shift
             CONFIG_FILE="$1"
             toShift="1"
-            [ -n "$VERBOSE" ] && echo "Use $CONFIG_FILE as config file"
+            info "Use $CONFIG_FILE as config file"
             ;;
         -pf | --projects-file)
             shift
             PROJECTS_FILE="$1"
             toShift="1"
-            [ -n "$VERBOSE" ] && echo "Use $PROJECTS_FILE as projects file"
+            info "Use $PROJECTS_FILE as projects file"
             ;;
         -gcf | --clone-folder)
             shift
             PROJECTS_FOLDER="$1"
             toShift="1"
-            [ -n "$VERBOSE" ] && echo "Use $PROJECTS_FOLDER as destination for cloned projects"
+            info "Use $PROJECTS_FOLDER as destination for cloned projects"
             ;;
         -h | --help)
             printHelp
@@ -157,7 +158,7 @@ parseArgs() {
             ACTION="new"
             shift
             parseNewArgs "$@"
-            [ -n "$VERBOSE" ] && echo "$toShift arguments have been parsed for new project"
+            info "$toShift arguments have been parsed for new project"
             ;;
         -s | search)
             ACTION="search"
@@ -175,10 +176,10 @@ parseArgs() {
                 printHelp
             }
             [ $((toShift)) -gt 0 ] && {
-                [ -n "$VERBOSE" ] && echo "Shifting $arg"
+                info "Shifting $arg"
                 shift
                 : $((toShift = toShift - 1))
-                [ -n "$VERBOSE" ] && echo "Shifted one time, $toShift remaining..."
+                info "Shifted one time, $toShift remaining..."
             }
             ;;
         esac
@@ -207,7 +208,7 @@ initPaths() {
     [ -z "$PROJECTS_FOLDER" ] && PROJECTS_FOLDER="."
 
     [ ! -d "$DATA_FOLDER" ] && {
-        [ -n "$VERBOSE" ] && echo "Creating data folder in $DATA_FOLDER"
+        info "Creating data folder in $DATA_FOLDER"
         mkdir -p "$DATA_FOLDER"
     }
 }
@@ -221,34 +222,34 @@ loadConfigFile() {
         echo "Config file doesn't exist"
         checkUserVariables || exit 1
     }
-    [ -n "$VERBOSE" ] && echo "Loading config file"
+    info "Loading config file"
     . "$CONFIG_FILE" # Source config file only if user variables aren't already set
 }
 
 updateProjectsList() {
-    [ -n "$VERBOSE" ] && echo "Updating projects list in $PROJECTS_FILE"
+    info "Updating projects list in $PROJECTS_FILE"
     if [ -n "$PRIVATE_TOKEN" ]; then
         request="$API_ROOT/projects?min_access_level=10"
-        [ -n "$VERBOSE" ] && echo "Retrieving public projects from $request"
+        info "Retrieving public projects from $request"
         curl --header "Authorization: Bearer $PRIVATE_TOKEN" "$request" -o "$DATA_FOLDER/public.json" >/dev/null 2>&1 || {
             echo "Error getting projects from API"
             exit 2
         }
         request="$request&visibility=private"
-        [ -n "$VERBOSE" ] && echo "Retrieving private projects from $request"
+        info "Retrieving private projects from $request"
         curl --header "Authorization: Bearer $PRIVATE_TOKEN" "$request" -o "$DATA_FOLDER/private.json" >/dev/null 2>&1 || {
             echo "Error getting projects from API"
             exit 2
         }
     elif [ -n "$USER_ID" ]; then
         request="$API_ROOT/users/$USER_ID/projects"
-        [ -n "$VERBOSE" ] && echo "Retrieving public projects from $request"
+        info "Retrieving public projects from $request"
         curl "$request" -o "$DATA_FOLDER/public.json" >/dev/null 2>&1 || {
             echo "Error getting projects from API"
             exit 2
         }
         request="$request?visibility=private"
-        [ -n "$VERBOSE" ] && echo "Retrieving private projects from $request"
+        info "Retrieving private projects from $request"
         curl --header "Authorization: Bearer $PRIVATE_TOKEN" "$request" -o "$DATA_FOLDER/private.json" >/dev/null 2>&1 || {
             echo "Error getting projects from API"
             exit 2
@@ -258,7 +259,7 @@ updateProjectsList() {
         exit 4
     fi
 
-    [ -n "$VERBOSE" ] && echo "Merging public and private projects"
+    info "Merging public and private projects"
     jq -scf "$DATA_FOLDER/public.json" "$DATA_FOLDER/private.json" | jq ".[]" >"$PROJECTS_FILE"
     rm "$DATA_FOLDER/public.json" "$DATA_FOLDER/private.json"
 }
@@ -299,7 +300,7 @@ fromJsonToList() {
 }
 
 listProjects() {
-    [ -n "$VERBOSE" ] && echo "Checking if projects file exist"
+    info "Checking if projects file exist"
     [ ! -f "$PROJECTS_FILE" ] && updateProjectsList
 
     fromJsonToList |
@@ -310,7 +311,7 @@ listProjects() {
 }
 
 searchProject() {
-    [ -n "$VERBOSE" ] && echo "Checking if projects file exist"
+    info "Checking if projects file exist"
     [ ! -f "$PROJECTS_FILE" ] && updateProjectsList
 
     fromJsonToList | grep "$1" |
@@ -327,7 +328,7 @@ cloneProject() {
 newProject() {
     [ -z "$newPath" ] && [ -z "$newName" ] && {
         [ -z "$newFrom" ] && echo "No path or name specified for new project!" && exit 5
-        [ -n "$VERBOSE" ] && echo "Extracting project name from $newFrom"
+        info "Extracting project name from $newFrom"
         newName="$(basename "$newFrom")"
     }
 
@@ -340,7 +341,7 @@ newProject() {
     if [ -n "$PRIVATE_TOKEN" ]; then
         request="$API_ROOT/projects"
         newData="$newName$newPath$newDescription$newVisibility"
-        [ -n "$VERBOSE" ] && echo "Creating new project with $request and data $newData"
+        info "Creating new project with $request and data $newData"
         curl --header "Authorization: Bearer $PRIVATE_TOKEN" -X POST -d "$newData" "$request" >/dev/null 2>&1 || {
             echo "Error creating project API"
             exit 6
@@ -350,9 +351,9 @@ newProject() {
     updateProjectsList
 
     [ -n "$newFrom" ] && [ -d "$newFrom" ] && {
-        [ -n "$VERBOSE" ] && echo "Searching new project url with $forLater"
+        info "Searching new project url with $forLater"
         URL=$(fromJsonToList | grep -w "$forLater" | cut -f 4)
-        [ -n "$VERBOSE" ] && echo "Found url $URL"
+        info "Found url $URL"
         git -C "$newFrom" remote show | grep -w ^origin >/dev/null 2>&1 && {
             git -C "$newFrom" remote remove origin
         }

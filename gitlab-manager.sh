@@ -158,7 +158,6 @@ parseArgs() {
             ACTION="new"
             shift
             parseNewArgs "$@"
-            info "$toShift arguments have been parsed for new project"
             ;;
         -s | search)
             ACTION="search"
@@ -176,10 +175,8 @@ parseArgs() {
                 printHelp
             }
             [ $((toShift)) -gt 0 ] && {
-                info "Shifting $arg"
                 shift
                 : $((toShift = toShift - 1))
-                info "Shifted one time, $toShift remaining..."
             }
             ;;
         esac
@@ -219,7 +216,7 @@ checkUserVariables() {
 
 loadConfigFile() {
     [ ! -f "$CONFIG_FILE" ] && {
-        echo "Config file doesn't exist"
+        info "Config file doesn't exist"
         checkUserVariables || exit 1
     }
     info "Loading config file"
@@ -231,26 +228,26 @@ updateProjectsList() {
     if [ -n "$PRIVATE_TOKEN" ]; then
         request="$API_ROOT/projects?min_access_level=10"
         info "Retrieving public projects from $request"
-        curl --header "Authorization: Bearer $PRIVATE_TOKEN" "$request" -o "$DATA_FOLDER/public.json" >/dev/null 2>&1 || {
+        curl --header "Authorization: Bearer $PRIVATE_TOKEN" "$request" -o "$DATA_FOLDER/public.json" --fail --silent --show-error || {
             echo "Error getting projects from API"
             exit 2
         }
         request="$request&visibility=private"
         info "Retrieving private projects from $request"
-        curl --header "Authorization: Bearer $PRIVATE_TOKEN" "$request" -o "$DATA_FOLDER/private.json" >/dev/null 2>&1 || {
+        curl --header "Authorization: Bearer $PRIVATE_TOKEN" "$request" -o "$DATA_FOLDER/private.json" --fail --silent --show-error || {
             echo "Error getting projects from API"
             exit 2
         }
     elif [ -n "$USER_ID" ]; then
         request="$API_ROOT/users/$USER_ID/projects"
         info "Retrieving public projects from $request"
-        curl "$request" -o "$DATA_FOLDER/public.json" >/dev/null 2>&1 || {
+        curl "$request" -o "$DATA_FOLDER/public.json" --fail --silent --show-error || {
             echo "Error getting projects from API"
             exit 2
         }
         request="$request?visibility=private"
         info "Retrieving private projects from $request"
-        curl --header "Authorization: Bearer $PRIVATE_TOKEN" "$request" -o "$DATA_FOLDER/private.json" >/dev/null 2>&1 || {
+        curl --header "Authorization: Bearer $PRIVATE_TOKEN" "$request" -o "$DATA_FOLDER/private.json" --fail --silent --show-error || {
             echo "Error getting projects from API"
             exit 2
         }
@@ -299,21 +296,21 @@ fromJsonToList() {
     jq -r "[.name, .description, .path_with_namespace, .ssh_url_to_repo, .id] | @tsv" "$PROJECTS_FILE"
 }
 
-listProjects() {
+checkProjects() {
     info "Checking if projects file exist"
     [ ! -f "$PROJECTS_FILE" ] && updateProjectsList
+}
 
+listProjects() {
+    checkProjects
     fromJsonToList |
         while IFS="" read -r line || [ -n "$line" ]; do
             printProject "$line" "$1"
         done
-
 }
 
 searchProject() {
-    info "Checking if projects file exist"
-    [ ! -f "$PROJECTS_FILE" ] && updateProjectsList
-
+    checkProjects
     fromJsonToList | grep "$1" |
         while IFS="" read -r line || [ -n "$line" ]; do
             printProject "$line"
@@ -322,6 +319,7 @@ searchProject() {
 
 cloneProject() {
     URL=$(fromJsonToList | grep -w "$1" | cut -f 4)
+    info "Cloning $1 from url $URL"
     git -C "$PROJECTS_FOLDER" clone --recurse-submodules "$URL"
 }
 
@@ -342,7 +340,7 @@ newProject() {
         request="$API_ROOT/projects"
         newData="$newName$newPath$newDescription$newVisibility"
         info "Creating new project with $request and data $newData"
-        curl --header "Authorization: Bearer $PRIVATE_TOKEN" -X POST -d "$newData" "$request" >/dev/null 2>&1 || {
+        curl --header "Authorization: Bearer $PRIVATE_TOKEN" -X POST -d "$newData" "$request" --fail --silent --show-error || {
             echo "Error creating project API"
             exit 6
         }
@@ -355,6 +353,7 @@ newProject() {
         URL=$(fromJsonToList | grep -w "$forLater" | cut -f 4)
         info "Found url $URL"
         git -C "$newFrom" remote show | grep -w ^origin >/dev/null 2>&1 && {
+            info "Removing old origin"
             git -C "$newFrom" remote remove origin
         }
         git -C "$newFrom" remote add origin "$URL"
@@ -367,9 +366,9 @@ newProject() {
 
 deleteProject() {
     ID=$(fromJsonToList | grep -w "$1" | cut -f 5)
-    echo "Deleting $1 with id $ID"
+    info "Deleting $1 with id $ID"
     request="$API_ROOT/projects/$ID"
-    curl --header "Authorization: Bearer $PRIVATE_TOKEN" --request DELETE "$request" >/dev/null 2>&1 || {
+    curl --header "Authorization: Bearer $PRIVATE_TOKEN" --request DELETE "$request" --fail --silent --show-error || {
         echo "Error deleting project"
         exit 7
     }

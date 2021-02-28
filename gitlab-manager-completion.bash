@@ -98,11 +98,11 @@ _gitlab-manager_completions() {
             listCompletion
             return
             ;;
-        -@(gcf|-clone-folder|-from))
+        -gcf | --clone-folder | --from)
             _cd
             return
             ;;
-        -@(cf|-config-file|pf|-projects-file))
+        -cf | --config-file | -pf | --projects-file)
             _fileCompletion
             return
             ;;
